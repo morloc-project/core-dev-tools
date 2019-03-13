@@ -1,0 +1,43 @@
+#!/bin/sh
+
+function diewith(){
+    echo "ERROR: $1" > /dev/stderr
+    exit 1
+}
+
+# get the branch name (e.g. 'master' or 'dev')
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+MASTER_VERSION_PATTERN="\d+\.\d+\.\d+"
+DEV_VERSION_PATTERN="$MASTER_VERSION_PATTERN-9\d\d\d"
+
+# require the version string has the format "v<int>.<int>.<int>" if it is in the master branch
+if [ "$branch" = "master" ]
+then
+    # ensure the version has the proper master format
+    grep -P "version:\s+$MASTER_VERSION_PATTERN" package.yaml > /dev/null ||
+        diewith "Invalid version for master commit (expected <X.X.X>)"
+
+    # take STDIN from keyboard
+    exec < /dev/tty
+    read -p "If you want to commit to master, you must say the magic word! " answer
+    echo
+    if [[ "$answer" != "prettyplease" ]]
+    then
+        diewith "That wasn't that magic word"
+    fi
+# or "v<int>.<int>.<int>-.9XXX"
+elif [ "$branch" = "dev" ]
+then
+    # ensure the version has the proper dev format
+    grep -P "version:\s+$DEV_VERSION_PATTERN" package.yaml > /dev/null ||
+        diewith "Invalid version for dev commit (expected <vX.X.X-9XXX>)"
+fi
+
+# ensure two versions in two files are the same
+v1=$(grep -P "^version:\s+$MASTER_VERSION_PATTERN.*" package.yaml | sed 's/version:\s+//')
+v2=$(grep -P "^morloc version $MASTER_VERSION_PATTERN.*" USAGE | sed 's/version = //')
+if [ "$v1" != "$v2" ]
+then
+    diewith "versions in a ($v1) and b ($v2) should be the same"
+fi
