@@ -41,3 +41,5 @@ if [ "$v1" != "$v2" ]
 then
     diewith "versions in a ($v1) and b ($v2) should be the same"
 fi
+
+stack test
